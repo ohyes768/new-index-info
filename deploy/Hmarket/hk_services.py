@@ -341,17 +341,14 @@ class HKDataFetcher:
 class HKDataProcessor:
     """港股新股数据处理服务"""
 
-    def __init__(self, future_days: int = 10):
-        """初始化数据处理服务
-
-        Args:
-            future_days: 查询未来天数
-        """
-        self.future_days = future_days
+    def __init__(self):
+        """初始化数据处理服务"""
         self.logger = get_logger()
 
-    def filter_future_stocks(self, stocks: List[HKNewStockInfo]) -> List[HKNewStockInfo]:
-        """筛选未来指定天数内的港股新股
+    def filter_subscribable_stocks(self, stocks: List[HKNewStockInfo]) -> List[HKNewStockInfo]:
+        """筛选当前可申购的港股新股
+
+        筛选条件：申购日期范围内包含今天的新股
 
         Args:
             stocks: 港股新股信息列表
@@ -359,35 +356,63 @@ class HKDataProcessor:
         Returns:
             List[HKNewStockInfo]: 筛选后的港股新股列表
         """
-        self.logger.info(f"开始筛选未来 {self.future_days} 天内的港股新股...")
+        self.logger.info("开始筛选当前可申购的港股新股...")
 
         today = datetime.now().date()
-        end_date = today + timedelta(days=self.future_days)
-
         filtered_stocks = []
 
         for stock in stocks:
-            # 优先使用上市日期，如果没有则使用申购日期
-            target_date = stock.listing_date if stock.listing_date else stock.subscription_date
-
-            if target_date is None:
+            if not stock.subscription_date_range:
                 continue
 
-            target_date_only = target_date.date()
+            # 解析日期范围字符串
+            start_date, end_date = self._parse_date_range(stock.subscription_date_range)
 
-            # 筛选条件：上市日期或申购日期在未来指定天数内
-            if today <= target_date_only <= end_date:
+            if start_date is None or end_date is None:
+                continue
+
+            # 筛选条件：今天在申购日期范围内
+            if start_date <= today <= end_date:
                 filtered_stocks.append(stock)
-                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({target_date_only})")
+                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
 
-        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只港股新股")
+        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只当前可申购的港股新股")
 
-        # 按日期排序
+        # 按申购日期排序
         filtered_stocks.sort(
-            key=lambda x: x.listing_date if x.listing_date else x.subscription_date or datetime.min
+            key=lambda x: x.subscription_date or datetime.min
         )
 
         return filtered_stocks
+
+    def _parse_date_range(self, date_range_str: str):
+        """解析日期范围字符串
+
+        Args:
+            date_range_str: 日期范围字符串，格式如 "2025-12-23至2025-12-24"
+
+        Returns:
+            tuple: (开始日期, 结束日期) 的 date 对象元组，解析失败返回 (None, None)
+        """
+        if not date_range_str or "至" not in date_range_str:
+            return None, None
+
+        try:
+            parts = date_range_str.split("至")
+            if len(parts) != 2:
+                return None, None
+
+            start_str = parts[0].strip()[:10]
+            end_str = parts[1].strip()[:10]
+
+            start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
+
+            return start_date, end_date
+
+        except Exception as e:
+            self.logger.debug(f"日期范围解析失败: {date_range_str}, 错误: {e}")
+            return None, None
 
     def group_by_date(self, stocks: List[HKNewStockInfo]) -> dict:
         """按上市日期分组
@@ -475,7 +500,7 @@ class HKMarkdownFormatter:
         lines = []
 
         # 标题
-        lines.append("# 港股新股发行信息")
+        lines.append("# 当前可申购的港股新股发行信息")
         lines.append("")
         lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append(f"**新股数量**: {len(stocks)} 只")
@@ -554,7 +579,7 @@ class HKMarkdownFormatter:
             str: 空数据的 Markdown
         """
         lines = []
-        lines.append("# 港股新股发行信息")
+        lines.append("# 当前可申购的港股新股发行信息")
         lines.append("")
         lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append("")
@@ -562,6 +587,6 @@ class HKMarkdownFormatter:
         lines.append("")
         lines.append("## 暂无新股信息")
         lines.append("")
-        lines.append("当前暂无港股新股发行信息。")
+        lines.append("当前暂无可申购的港股新股。")
 
         return "\n".join(lines)
