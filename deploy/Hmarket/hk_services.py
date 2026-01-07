@@ -385,6 +385,48 @@ class HKDataProcessor:
 
         return filtered_stocks
 
+    def filter_future_unopened_stocks(self, stocks: List[HKNewStockInfo], future_days: int = 14) -> List[HKNewStockInfo]:
+        """筛选未来指定天数内还未开放申购的港股新股
+
+        筛选条件：申购开始日期在今天之后，且在未来指定天数内
+
+        Args:
+            stocks: 港股新股信息列表
+            future_days: 查询未来天数，默认14天
+
+        Returns:
+            List[HKNewStockInfo]: 筛选后的港股新股列表
+        """
+        self.logger.info(f"开始筛选未来 {future_days} 天内未开放申购的港股新股...")
+
+        today = datetime.now().date()
+        future_date = today + timedelta(days=future_days)
+        filtered_stocks = []
+
+        for stock in stocks:
+            if not stock.subscription_date_range:
+                continue
+
+            # 解析日期范围字符串
+            start_date, end_date = self._parse_date_range(stock.subscription_date_range)
+
+            if start_date is None or end_date is None:
+                continue
+
+            # 筛选条件：申购开始日期在今天之后，且在未来指定天数内
+            if today < start_date <= future_date:
+                filtered_stocks.append(stock)
+                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
+
+        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只未来 {future_days} 天内未开放申购的港股新股")
+
+        # 按申购日期排序
+        filtered_stocks.sort(
+            key=lambda x: x.subscription_date or datetime.min
+        )
+
+        return filtered_stocks
+
     def _parse_date_range(self, date_range_str: str):
         """解析日期范围字符串
 
@@ -482,44 +524,74 @@ class HKMarkdownFormatter:
     def __init__(self):
         self.logger = get_logger()
 
-    def format_new_stocks(self, stocks: List[HKNewStockInfo]) -> str:
-        """格式化港股新股信息为 Markdown
+    def format_new_stocks(self, subscribable_stocks: List[HKNewStockInfo], future_stocks: List[HKNewStockInfo] = None) -> str:
+        """格式化港股新股信息为 Markdown，分类展示
 
         Args:
-            stocks: 港股新股信息列表
+            subscribable_stocks: 当前可申购的港股新股列表
+            future_stocks: 未来未开放申购的港股新股列表
 
         Returns:
             str: Markdown 格式的文本
         """
         self.logger.info("开始格式化港股新股信息...")
 
-        if not stocks:
+        # 如果两类股票都为空，返回空数据格式
+        if not subscribable_stocks and not future_stocks:
             return self._format_empty()
 
         # 构建 Markdown
         lines = []
 
-        # 标题
-        lines.append("# 当前可申购的港股新股发行信息")
+        # 总标题
+        lines.append("# 港股新股发行信息")
         lines.append("")
         lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        lines.append(f"**新股数量**: {len(stocks)} 只")
-        lines.append("")
-        lines.append("---")
         lines.append("")
 
-        # 按日期分组
-        processor = HKDataProcessor()
-        grouped = processor.group_by_date(stocks)
-
-        # 遍历每个日期
-        for date_str, date_stocks in sorted(grouped.items()):
-            lines.append(f"## {date_str}")
+        # 第一部分：当前可申购的新股
+        if subscribable_stocks:
+            lines.append("---")
+            lines.append("")
+            lines.append("## 一、当前可申购的新股")
+            lines.append("")
+            lines.append(f"**数量**: {len(subscribable_stocks)} 只")
             lines.append("")
 
-            for stock in date_stocks:
-                lines.extend(self._format_stock(stock))
+            # 按日期分组
+            processor = HKDataProcessor()
+            grouped = processor.group_by_date(subscribable_stocks)
+
+            # 遍历每个日期
+            for date_str, date_stocks in sorted(grouped.items()):
+                lines.append(f"### {date_str}")
                 lines.append("")
+
+                for stock in date_stocks:
+                    lines.extend(self._format_stock(stock))
+                    lines.append("")
+
+        # 第二部分：未来未开放申购的新股
+        if future_stocks:
+            lines.append("---")
+            lines.append("")
+            lines.append("## 二、未来14天即将开放申购的新股")
+            lines.append("")
+            lines.append(f"**数量**: {len(future_stocks)} 只")
+            lines.append("")
+
+            # 按日期分组
+            processor = HKDataProcessor()
+            grouped = processor.group_by_date(future_stocks)
+
+            # 遍历每个日期
+            for date_str, date_stocks in sorted(grouped.items()):
+                lines.append(f"### {date_str}")
+                lines.append("")
+
+                for stock in date_stocks:
+                    lines.extend(self._format_stock(stock))
+                    lines.append("")
 
         markdown = "\n".join(lines)
 
@@ -579,7 +651,7 @@ class HKMarkdownFormatter:
             str: 空数据的 Markdown
         """
         lines = []
-        lines.append("# 当前可申购的港股新股发行信息")
+        lines.append("# 港股新股发行信息")
         lines.append("")
         lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append("")
@@ -587,6 +659,6 @@ class HKMarkdownFormatter:
         lines.append("")
         lines.append("## 暂无新股信息")
         lines.append("")
-        lines.append("当前暂无可申购的港股新股。")
+        lines.append("当前暂无可申购的港股新股，未来14天也无即将开放申购的港股新股。")
 
         return "\n".join(lines)
