@@ -626,13 +626,11 @@ class MarkdownFormatter:
         lines.append(f"| **上市地点** | {stock.market} |")
         lines.append(f"| **所属行业** | {stock.industry} |")
 
-        lines.append("")
-
-        # 公司简介
+        # 公司简介（如果有）
         if stock.company_intro:
-            lines.append("**公司简介**:")
-            lines.append(stock.company_intro)
-            lines.append("")
+            lines.append(f"| **公司简介** | {stock.company_intro} |")
+
+        lines.append("")
 
         return lines
 
