@@ -120,7 +120,7 @@ class HKDataFetcher:
         Returns:
             List[HKNewStockInfo]: 港股新股信息列表
         """
-        self.logger.info("开始获取港股新股数据...")
+        print("INFO: 开始获取港股新股数据...", file=sys.stderr)
 
         try:
             # 请求频率限制
@@ -138,7 +138,7 @@ class HKDataFetcher:
             response.encoding = 'gbk'
 
             self.last_request_time = time.time()
-            self.logger.info(f"成功获取页面，状态码: {response.status_code}")
+            print(f"INFO: 成功获取页面，状态码: {response.status_code}", file=sys.stderr)
 
             # 解析HTML
             soup = BeautifulSoup(response.text, 'lxml')
@@ -146,27 +146,27 @@ class HKDataFetcher:
             # 查找所有表格
             tables = soup.find_all('table')
             if len(tables) < 2:
-                self.logger.error(f"未找到足够的数据表格，只找到{len(tables)}个，页面结构可能已变化")
+                print(f"ERROR: 未找到足够的数据表格，只找到{len(tables)}个，页面结构可能已变化", file=sys.stderr)
                 return []
 
             # 使用第二个表格（索引1），第一个表格是导航菜单
             table = tables[1]
-            self.logger.debug(f"找到{len(tables)}个表格，使用第2个表格进行解析")
+            print(f"DEBUG: 找到{len(tables)}个表格，使用第2个表格进行解析", file=sys.stderr)
 
             # 解析表格数据
             stocks = self._parse_table(table)
-            self.logger.info(f"成功解析 {len(stocks)} 条港股新股数据")
+            print(f"INFO: 成功解析 {len(stocks)} 条港股新股数据", file=sys.stderr)
 
             return stocks
 
         except requests.exceptions.Timeout:
-            self.logger.error(f"请求超时（{self.timeout}秒）")
+            print(f"ERROR: 请求超时（{self.timeout}秒）", file=sys.stderr)
             return []
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"网络请求失败: {e}")
+            print(f"ERROR: 网络请求失败: {e}", file=sys.stderr)
             return []
         except Exception as e:
-            self.logger.error(f"获取数据时出错: {e}", exc_info=True)
+            print(f"ERROR: 获取数据时出错: {e}", file=sys.stderr)
             return []
 
     def _rate_limit(self):
@@ -174,7 +174,7 @@ class HKDataFetcher:
         elapsed = time.time() - self.last_request_time
         if elapsed < self.min_interval:
             sleep_time = self.min_interval - elapsed + random.uniform(0.5, 1.5)
-            self.logger.info(f"等待 {sleep_time:.2f} 秒后继续...")
+            print(f"INFO: 等待 {sleep_time:.2f} 秒后继续...", file=sys.stderr)
             time.sleep(sleep_time)
 
     def _get_headers(self) -> dict:
@@ -225,7 +225,7 @@ class HKDataFetcher:
             cols = row.find_all(['td', 'th'])
 
             if len(cols) < 7:
-                self.logger.debug(f"列数不足，跳过该行: {len(cols)}列")
+                print(f"DEBUG: 列数不足，跳过该行: {len(cols)}列", file=sys.stderr)
                 continue
 
             try:
@@ -289,10 +289,10 @@ class HKDataFetcher:
                 )
 
                 stocks.append(stock)
-                self.logger.debug(f"成功解析: {stock_code} - {stock_name}")
+                print(f"DEBUG: 成功解析: {stock_code} - {stock_name}", file=sys.stderr)
 
             except Exception as e:
-                self.logger.warning(f"解析行数据失败: {e}")
+                print(f"WARNING: 解析行数据失败: {e}", file=sys.stderr)
                 continue
 
         return stocks
@@ -329,7 +329,7 @@ class HKDataFetcher:
                     continue
 
         except Exception as e:
-            self.logger.debug(f"日期解析失败: {date_str}, 错误: {e}")
+            print(f"DEBUG: 日期解析失败: {date_str}, 错误: {e}", file=sys.stderr)
 
         return None
 
@@ -356,7 +356,7 @@ class HKDataProcessor:
         Returns:
             List[HKNewStockInfo]: 筛选后的港股新股列表
         """
-        self.logger.info("开始筛选当前可申购的港股新股...")
+        print("INFO: 开始筛选当前可申购的港股新股...", file=sys.stderr)
 
         today = datetime.now().date()
         filtered_stocks = []
@@ -374,9 +374,9 @@ class HKDataProcessor:
             # 筛选条件：今天在申购日期范围内
             if start_date <= today <= end_date:
                 filtered_stocks.append(stock)
-                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
+                print(f"DEBUG: 符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})", file=sys.stderr)
 
-        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只当前可申购的港股新股")
+        print(f"INFO: 筛选完成，找到 {len(filtered_stocks)} 只当前可申购的港股新股", file=sys.stderr)
 
         # 按申购日期排序
         filtered_stocks.sort(
@@ -397,7 +397,7 @@ class HKDataProcessor:
         Returns:
             List[HKNewStockInfo]: 筛选后的港股新股列表
         """
-        self.logger.info(f"开始筛选未来 {future_days} 天内未开放申购的港股新股...")
+        print(f"INFO: 开始筛选未来 {future_days} 天内未开放申购的港股新股...", file=sys.stderr)
 
         today = datetime.now().date()
         future_date = today + timedelta(days=future_days)
@@ -416,9 +416,9 @@ class HKDataProcessor:
             # 筛选条件：申购开始日期在今天之后，且在未来指定天数内
             if today < start_date <= future_date:
                 filtered_stocks.append(stock)
-                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
+                print(f"DEBUG: 符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})", file=sys.stderr)
 
-        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只未来 {future_days} 天内未开放申购的港股新股")
+        print(f"INFO: 筛选完成，找到 {len(filtered_stocks)} 只未来 {future_days} 天内未开放申购的港股新股", file=sys.stderr)
 
         # 按申购日期排序
         filtered_stocks.sort(
@@ -453,7 +453,7 @@ class HKDataProcessor:
             return start_date, end_date
 
         except Exception as e:
-            self.logger.debug(f"日期范围解析失败: {date_range_str}, 错误: {e}")
+            print(f"DEBUG: 日期范围解析失败: {date_range_str}, 错误: {e}", file=sys.stderr)
             return None, None
 
     def group_by_date(self, stocks: List[HKNewStockInfo]) -> dict:
@@ -492,24 +492,24 @@ class HKDataProcessor:
         Returns:
             List[HKNewStockInfo]: 验证通过的港股新股列表
         """
-        self.logger.info("开始验证数据完整性...")
+        print("INFO: 开始验证数据完整性...", file=sys.stderr)
 
         valid_stocks = []
 
         for stock in stocks:
             # 基本字段验证
             if not stock.stock_code or not stock.stock_name:
-                self.logger.warning(f"股票代码或名称为空，跳过: {stock}")
+                print(f"WARNING: 股票代码或名称为空，跳过: {stock}", file=sys.stderr)
                 continue
 
             # 至少需要有申购日期或上市日期之一
             if not stock.subscription_date and not stock.listing_date:
-                self.logger.warning(f"申购日期和上市日期均为空，跳过: {stock.stock_code}")
+                print(f"WARNING: 申购日期和上市日期均为空，跳过: {stock.stock_code}", file=sys.stderr)
                 continue
 
             valid_stocks.append(stock)
 
-        self.logger.info(f"数据验证完成，有效数据 {len(valid_stocks)}/{len(stocks)} 条")
+        print(f"INFO: 数据验证完成，有效数据 {len(valid_stocks)}/{len(stocks)} 条", file=sys.stderr)
 
         return valid_stocks
 
@@ -534,7 +534,7 @@ class HKMarkdownFormatter:
         Returns:
             str: Markdown 格式的文本
         """
-        self.logger.info("开始格式化港股新股信息...")
+        print("INFO: 开始格式化港股新股信息...", file=sys.stderr)
 
         # 如果两类股票都为空，返回空数据格式
         if not subscribable_stocks and not future_stocks:
@@ -595,7 +595,7 @@ class HKMarkdownFormatter:
 
         markdown = "\n".join(lines)
 
-        self.logger.info("Markdown 格式化完成")
+        print("INFO: Markdown 格式化完成", file=sys.stderr)
         return markdown
 
     def _format_stock(self, stock: HKNewStockInfo) -> List[str]:

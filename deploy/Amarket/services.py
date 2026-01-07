@@ -109,27 +109,27 @@ class DataFetcher:
         Raises:
             Exception: 当数据获取失败时
         """
-        self.logger.info("开始获取新股发行信息...")
+        print("INFO: 开始获取新股发行信息...", file=sys.stderr)
 
         try:
             # 调用 akshare API 获取新股数据
             df = ak.stock_new_ipo_cninfo()
 
             if df is None or df.empty:
-                self.logger.warning("未获取到新股数据")
+                print("WARNING: 未获取到新股数据", file=sys.stderr)
                 return []
 
-            self.logger.info(f"成功获取到 {len(df)} 条新股原始数据")
-            self.logger.debug(f"数据列: {df.columns.tolist()}")
+            print(f"INFO: 成功获取到 {len(df)} 条新股原始数据", file=sys.stderr)
+            print(f"DEBUG: 数据列: {df.columns.tolist()}", file=sys.stderr)
 
             # 转换为 NewStockInfo 对象列表
             new_stocks = self._parse_dataframe(df)
 
-            self.logger.info(f"成功解析 {len(new_stocks)} 条新股信息")
+            print(f"INFO: 成功解析 {len(new_stocks)} 条新股信息", file=sys.stderr)
             return new_stocks
 
         except Exception as e:
-            self.logger.error(f"获取新股数据时出错: {e}", exc_info=True)
+            print(f"ERROR: 获取新股数据时出错: {e}", file=sys.stderr)
             raise
 
     def _parse_dataframe(self, df: pd.DataFrame) -> List[NewStockInfo]:
@@ -158,17 +158,17 @@ class DataFetcher:
                     start_str = str(online_start)[:10]
                     end_str = str(online_end)[:10]
                     issue_date_range = f"{start_str}至{end_str}"
-                    self.logger.debug(f"股票 {row.get('证券简称')}: 组合日期范围 {issue_date_range}")
+                    print(f"DEBUG: 股票 {row.get('证券简称')}: 组合日期范围 {issue_date_range}", file=sys.stderr)
                 elif pd.notna(online_end):
                     # 如果只有结束日期，使用结束日期作为范围
                     end_str = str(online_end)[:10]
                     issue_date_range = f"{end_str}至{end_str}"
-                    self.logger.debug(f"股票 {row.get('证券简称')}: 使用结束日期作为范围 {issue_date_range}")
+                    print(f"DEBUG: 股票 {row.get('证券简称')}: 使用结束日期作为范围 {issue_date_range}", file=sys.stderr)
                 elif pd.notna(issue_date_raw):
                     # 如果只有单个日期，使用该日期作为范围
                     date_str = str(issue_date_raw)[:10] if len(str(issue_date_raw)) >= 10 else str(issue_date_raw)
                     issue_date_range = f"{date_str}至{date_str}"
-                    self.logger.debug(f"股票 {row.get('证券简称')}: 使用单个日期作为范围 {issue_date_range}")
+                    print(f"DEBUG: 股票 {row.get('证券简称')}: 使用单个日期作为范围 {issue_date_range}", file=sys.stderr)
 
                 # 根据实际返回字段进行解析
                 # 字段映射基于 ak.stock_new_ipo_cninfo() 的返回结果
@@ -191,7 +191,7 @@ class DataFetcher:
                 new_stocks.append(stock_info)
 
             except Exception as e:
-                self.logger.warning(f"解析单条数据时出错: {e}, 行数据: {row.to_dict()}")
+                print(f"WARNING: 解析单条数据时出错: {e}, 行数据: {row.to_dict()}", file=sys.stderr)
                 continue
 
         return new_stocks
@@ -205,7 +205,7 @@ class DataFetcher:
         Returns:
             List[NewStockInfo]: 补充信息后的新股列表
         """
-        self.logger.info("开始补充股票详细信息...")
+        print("INFO: 开始补充股票详细信息...", file=sys.stderr)
 
         for stock in stocks:
             try:
@@ -230,10 +230,10 @@ class DataFetcher:
                             intro_str = intro_str[:500] + "..."
                         stock.company_intro = intro_str
 
-                    self.logger.debug(f"成功补充 {stock.stock_code} 的详细信息")
+                    print(f"DEBUG: 成功补充 {stock.stock_code} 的详细信息", file=sys.stderr)
 
             except Exception as e:
-                self.logger.warning(f"补充 {stock.stock_code} 的详细信息时出错: {e}")
+                print(f"WARNING: 补充 {stock.stock_code} 的详细信息时出错: {e}", file=sys.stderr)
                 continue
 
         return stocks
@@ -258,7 +258,7 @@ class DataFetcher:
                 except ValueError:
                     continue
         except Exception as e:
-            self.logger.debug(f"日期解析失败: {date_str}, 错误: {e}")
+            print(f"DEBUG: 日期解析失败: {date_str}, 错误: {e}", file=sys.stderr)
 
         return None
 
@@ -349,7 +349,7 @@ class DataProcessor:
         Returns:
             List[NewStockInfo]: 筛选后的新股列表
         """
-        self.logger.info("开始筛选当前可申购的新股...")
+        print("INFO: 开始筛选当前可申购的新股...", file=sys.stderr)
 
         today = datetime.now().date()
         filtered_stocks = []
@@ -367,9 +367,9 @@ class DataProcessor:
             # 筛选条件：今天在申购日期范围内
             if start_date <= today <= end_date:
                 filtered_stocks.append(stock)
-                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
+                print(f"DEBUG: 符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})", file=sys.stderr)
 
-        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只当前可申购的新股")
+        print(f"INFO: 筛选完成，找到 {len(filtered_stocks)} 只当前可申购的新股", file=sys.stderr)
 
         # 按申购日期排序
         filtered_stocks.sort(key=lambda x: x.issue_date or datetime.min)
@@ -388,7 +388,7 @@ class DataProcessor:
         Returns:
             List[NewStockInfo]: 筛选后的新股列表
         """
-        self.logger.info(f"开始筛选未来 {future_days} 天内未开放申购的新股...")
+        print(f"INFO: 开始筛选未来 {future_days} 天内未开放申购的新股...", file=sys.stderr)
 
         today = datetime.now().date()
         future_date = today + timedelta(days=future_days)
@@ -407,9 +407,9 @@ class DataProcessor:
             # 筛选条件：申购开始日期在今天之后，且在未来指定天数内
             if today < start_date <= future_date:
                 filtered_stocks.append(stock)
-                self.logger.debug(f"符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})")
+                print(f"DEBUG: 符合条件: {stock.stock_code} - {stock.stock_name} ({start_date} 至 {end_date})", file=sys.stderr)
 
-        self.logger.info(f"筛选完成，找到 {len(filtered_stocks)} 只未来 {future_days} 天内未开放申购的新股")
+        print(f"INFO: 筛选完成，找到 {len(filtered_stocks)} 只未来 {future_days} 天内未开放申购的新股", file=sys.stderr)
 
         # 按申购日期排序
         filtered_stocks.sort(key=lambda x: x.issue_date or datetime.min)
@@ -442,7 +442,7 @@ class DataProcessor:
             return start_date, end_date
 
         except Exception as e:
-            self.logger.debug(f"日期范围解析失败: {date_range_str}, 错误: {e}")
+            print(f"DEBUG: 日期范围解析失败: {date_range_str}, 错误: {e}", file=sys.stderr)
             return None, None
 
     def group_by_date(self, stocks: List[NewStockInfo]) -> dict:
@@ -478,23 +478,23 @@ class DataProcessor:
         Returns:
             List[NewStockInfo]: 验证通过的新股列表
         """
-        self.logger.info("开始验证数据完整性...")
+        print("INFO: 开始验证数据完整性...", file=sys.stderr)
 
         valid_stocks = []
 
         for stock in stocks:
             # 基本字段验证
             if not stock.stock_code or not stock.stock_name:
-                self.logger.warning(f"股票代码或名称为空，跳过: {stock}")
+                print(f"WARNING: 股票代码或名称为空，跳过: {stock}", file=sys.stderr)
                 continue
 
             if not stock.issue_date:
-                self.logger.warning(f"发行日期为空，跳过: {stock.stock_code}")
+                print(f"WARNING: 发行日期为空，跳过: {stock.stock_code}", file=sys.stderr)
                 continue
 
             valid_stocks.append(stock)
 
-        self.logger.info(f"数据验证完成，有效数据 {len(valid_stocks)}/{len(stocks)} 条")
+        print(f"INFO: 数据验证完成，有效数据 {len(valid_stocks)}/{len(stocks)} 条", file=sys.stderr)
 
         return valid_stocks
 
@@ -519,7 +519,7 @@ class MarkdownFormatter:
         Returns:
             str: Markdown 格式的文本
         """
-        self.logger.info("开始格式化新股信息...")
+        print("INFO: 开始格式化新股信息...", file=sys.stderr)
 
         # 如果两类股票都为空，返回空数据格式
         if not subscribable_stocks and not future_stocks:
@@ -580,7 +580,7 @@ class MarkdownFormatter:
 
         markdown = "\n".join(lines)
 
-        self.logger.info("Markdown 格式化完成")
+        print("INFO: Markdown 格式化完成", file=sys.stderr)
         return markdown
 
     def _format_stock(self, stock: NewStockInfo) -> List[str]:
