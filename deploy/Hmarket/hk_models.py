@@ -23,7 +23,8 @@ class HKNewStockInfo:
         raised_amount: 集资额（港元，字符串格式）
         offer_shares: 发售股数（股）
         subscription_ratio: 认购倍数
-        subscription_date: 申购日期（datetime对象）
+        subscription_date: 申购日期（datetime对象，用于筛选）
+        subscription_date_range: 申购日期范围（原始字符串，如 "2025-12-31至2026-01-06"）
         listing_date: 上市日期（datetime对象）
         market: 市场（默认"港股"）
         industry: 所属行业
@@ -37,6 +38,7 @@ class HKNewStockInfo:
     offer_shares: Optional[str] = None
     subscription_ratio: Optional[str] = None
     subscription_date: Optional[datetime] = None
+    subscription_date_range: Optional[str] = None  # 新增：保存原始日期范围
     listing_date: Optional[datetime] = None
     market: str = "港股"
     industry: str = ""

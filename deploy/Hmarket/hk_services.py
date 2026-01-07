@@ -259,11 +259,16 @@ class HKDataFetcher:
 
                 # 解析申购日期（可能是区间，如"2025-12-31至2026-01-06"）
                 subscription_date = None
+                subscription_date_range = None  # 新增：保存原始日期范围
                 if subscription_date_raw and subscription_date_raw != "--":
-                    # 取区间的第一个日期
+                    # 保存原始日期范围字符串
+                    subscription_date_range = subscription_date_raw.strip()
+
+                    # 提取第一个日期用于筛选
+                    date_for_parsing = subscription_date_raw
                     if "至" in subscription_date_raw:
-                        subscription_date_raw = subscription_date_raw.split("至")[0]
-                    subscription_date = self._parse_date(subscription_date_raw.strip())
+                        date_for_parsing = subscription_date_raw.split("至")[0]
+                    subscription_date = self._parse_date(date_for_parsing.strip())
 
                 # 解析上市日期
                 listing_date = None
@@ -279,6 +284,7 @@ class HKDataFetcher:
                     offer_shares=offer_shares if offer_shares else None,
                     subscription_ratio=None,  # 当前表格中没有认购倍数
                     subscription_date=subscription_date,
+                    subscription_date_range=subscription_date_range,  # 新增：保存日期范围
                     listing_date=listing_date,
                 )
 
@@ -515,7 +521,10 @@ class HKMarkdownFormatter:
         lines.append("|------|------|")
         lines.append(f"| **股票代码** | {stock.stock_code} |")
 
-        if stock.subscription_date:
+        # 优先使用日期范围，如果没有则使用单个日期
+        if stock.subscription_date_range:
+            lines.append(f"| **申购日期** | {stock.subscription_date_range} |")
+        elif stock.subscription_date:
             lines.append(f"| **申购日期** | {stock.subscription_date.strftime('%Y-%m-%d')} |")
 
         if stock.listing_date:
