@@ -158,17 +158,17 @@ class DataFetcher:
                     start_str = str(online_start)[:10]
                     end_str = str(online_end)[:10]
                     issue_date_range = f"{start_str}至{end_str}"
-                    print(f"DEBUG: 股票 {row.get('证券简称')}: 组合日期范围 {issue_date_range}", file=sys.stderr)
+                    # print(f"DEBUG: 股票 {row.get('证券简称')}: 组合日期范围 {issue_date_range}", file=sys.stderr)
                 elif pd.notna(online_end):
                     # 如果只有结束日期，使用结束日期作为范围
                     end_str = str(online_end)[:10]
                     issue_date_range = f"{end_str}至{end_str}"
-                    print(f"DEBUG: 股票 {row.get('证券简称')}: 使用结束日期作为范围 {issue_date_range}", file=sys.stderr)
+                    # print(f"DEBUG: 股票 {row.get('证券简称')}: 使用结束日期作为范围 {issue_date_range}", file=sys.stderr)
                 elif pd.notna(issue_date_raw):
                     # 如果只有单个日期，使用该日期作为范围
                     date_str = str(issue_date_raw)[:10] if len(str(issue_date_raw)) >= 10 else str(issue_date_raw)
                     issue_date_range = f"{date_str}至{date_str}"
-                    print(f"DEBUG: 股票 {row.get('证券简称')}: 使用单个日期作为范围 {issue_date_range}", file=sys.stderr)
+                    # print(f"DEBUG: 股票 {row.get('证券简称')}: 使用单个日期作为范围 {issue_date_range}", file=sys.stderr)
 
                 # 根据实际返回字段进行解析
                 # 字段映射基于 ak.stock_new_ipo_cninfo() 的返回结果

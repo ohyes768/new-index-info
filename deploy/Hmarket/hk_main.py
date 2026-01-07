@@ -59,13 +59,22 @@ def main():
         future_stocks = processor.filter_future_unopened_stocks(valid_stocks, future_days=14)
         print(f"DEBUG: 找到 {len(future_stocks)} 只未来14天即将开放申购的港股", file=sys.stderr)
 
-        # 3. 格式化输出
-        print("DEBUG: 步骤 3/5: 格式化为 Markdown", file=sys.stderr)
+        # 3. 补充详细信息（板块和公司简介）
+        print("DEBUG: 步骤 3/5: 补充详细信息（板块、公司简介）", file=sys.stderr)
+        all_stocks = subscribable_stocks + future_stocks
+        if all_stocks:
+            all_stocks = fetcher.enrich_stocks_detail(all_stocks)
+            # 更新分类后的列表
+            subscribable_stocks = all_stocks[:len(subscribable_stocks)]
+            future_stocks = all_stocks[len(subscribable_stocks):]
+
+        # 4. 格式化输出
+        print("DEBUG: 步骤 4/5: 格式化为 Markdown", file=sys.stderr)
         formatter = HKMarkdownFormatter()
         markdown = formatter.format_new_stocks(subscribable_stocks, future_stocks)
 
-        # 4. 输出到控制台（供 n8n 读取）
-        print("DEBUG: 步骤 4/5: 输出到控制台", file=sys.stderr)
+        # 5. 输出到控制台（供 n8n 读取）
+        print("DEBUG: 步骤 5/5: 输出到控制台", file=sys.stderr)
 
         # 输出 JSON 格式
         result = {

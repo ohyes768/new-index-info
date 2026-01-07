@@ -192,6 +192,99 @@ class HKDataFetcher:
             'Upgrade-Insecure-Requests': '1',
         }
 
+    def _fetch_stock_detail(self, stock_code: str) -> tuple:
+        """获取单个股票的详情页信息
+
+        Args:
+            stock_code: 股票代码
+
+        Returns:
+            tuple: (板块, 公司简介)
+        """
+        url = f"http://vip.stock.finance.sina.com.cn/q/view/hk_IPOProfile.php?symbol={stock_code}"
+
+        try:
+            # 请求频率限制
+            self._rate_limit()
+
+            # 发送请求
+            headers = self._get_headers()
+            response = requests.get(url, headers=headers, timeout=self.timeout)
+            response.encoding = 'gbk'
+
+            # 解析HTML
+            soup = BeautifulSoup(response.text, 'lxml')
+
+            # 查找所有表格
+            tables = soup.find_all('table')
+
+            for table in tables:
+                rows = table.find_all('tr')
+
+                # 跳过太小的表格
+                if len(rows) < 10:
+                    continue
+
+                industry = ""
+                company_intro = ""
+
+                # 遍历行，查找板块和公司简介
+                for row in rows:
+                    cells = row.find_all(['td', 'th'])
+
+                    if len(cells) >= 2:
+                        label = cells[0].get_text(strip=True)
+                        value = cells[1].get_text(strip=True) if len(cells) > 1 else ""
+
+                        if label == '板块':
+                            industry = value
+                        elif label == '公司简介':
+                            company_intro = value
+                            # 找到公司简介后就可以返回了（通常在板块后面）
+                            if industry or company_intro:
+                                return industry, company_intro
+
+                # 如果在这个表格中找到了数据，返回
+                if industry or company_intro:
+                    return industry, company_intro
+
+            return "", ""
+
+        except Exception as e:
+            print(f"ERROR: 获取股票 {stock_code} 详情页失败: {e}", file=sys.stderr)
+            return "", ""
+
+    def enrich_stocks_detail(self, stocks: List[HKNewStockInfo]) -> List[HKNewStockInfo]:
+        """批量补充股票的详情信息（板块和公司简介）
+
+        Args:
+            stocks: 港股新股列表
+
+        Returns:
+            List[HKNewStockInfo]: 补充了详情信息的股票列表
+        """
+        if not stocks:
+            return stocks
+
+        print(f"INFO: 开始补充 {len(stocks)} 只港股的详细信息（板块、公司简介）...", file=sys.stderr)
+
+        for i, stock in enumerate(stocks, 1):
+            print(f"DEBUG: 正在获取第 {i}/{len(stocks)} 只股票的详情: {stock.stock_code}", file=sys.stderr)
+
+            # 获取详情
+            industry, company_intro = self._fetch_stock_detail(stock.stock_code)
+
+            # 更新股票信息
+            if industry:
+                stock.industry = industry
+            if company_intro:
+                stock.company_intro = company_intro
+
+            print(f"DEBUG: 股票 {stock.stock_code} - 板块: {industry if industry else '无'}, 公司简介: {len(company_intro)} 字符", file=sys.stderr)
+
+        print(f"INFO: 详细信息补充完成", file=sys.stderr)
+        return stocks
+
     def _parse_table(self, table) -> List[HKNewStockInfo]:
         """解析表格数据
 
@@ -289,7 +382,7 @@ class HKDataFetcher:
                 )
 
                 stocks.append(stock)
-                print(f"DEBUG: 成功解析: {stock_code} - {stock_name}", file=sys.stderr)
+                # print(f"DEBUG: 成功解析: {stock_code} - {stock_name}", file=sys.stderr)
 
             except Exception as e:
                 print(f"WARNING: 解析行数据失败: {e}", file=sys.stderr)
@@ -639,6 +732,14 @@ class HKMarkdownFormatter:
             lines.append(f"| **认购倍数** | {stock.subscription_ratio} |")
 
         lines.append(f"| **上市地点** | 港交所 |")
+
+        # 所属行业（如果有）
+        if stock.industry:
+            lines.append(f"| **所属行业** | {stock.industry} |")
+
+        # 公司简介（如果有）
+        if stock.company_intro:
+            lines.append(f"| **公司简介** | {stock.company_intro} |")
 
         lines.append("")
 
