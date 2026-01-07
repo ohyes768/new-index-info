@@ -1,7 +1,7 @@
 """
 港股新股发行信息获取系统 - 主入口
 
-自动获取未来10天内的港股新股发行信息，并输出为 Markdown 格式
+自动获取当前可申购和未来14天即将开放申购的港股新股发行信息，并输出为 Markdown 格式
 
 依赖：
     - pip install requests beautifulsoup4 lxml
@@ -32,27 +32,35 @@ def main():
             logger.warning("未获取到任何港股新股数据")
             # 即使没有数据，也要输出空报告
             formatter = HKMarkdownFormatter()
-            markdown = formatter.format_new_stocks([])
+            markdown = formatter.format_new_stocks([], [])
             print(markdown)
             return
 
         # 2. 处理数据
         logger.info("步骤 2/4: 验证和筛选数据")
-        processor = HKDataProcessor(future_days=10)
+        processor = HKDataProcessor()
         valid_stocks = processor.validate_data(stocks)
-        future_stocks = processor.filter_future_stocks(valid_stocks)
+
+        # 筛选当前可申购的新股
+        subscribable_stocks = processor.filter_subscribable_stocks(valid_stocks)
+        logger.info(f"找到 {len(subscribable_stocks)} 只当前可申购的港股")
+
+        # 筛选未来14天未开放申购的新股
+        future_stocks = processor.filter_future_unopened_stocks(valid_stocks, future_days=14)
+        logger.info(f"找到 {len(future_stocks)} 只未来14天即将开放申购的港股")
 
         # 3. 格式化输出
         logger.info("步骤 3/4: 格式化为 Markdown")
         formatter = HKMarkdownFormatter()
-        markdown = formatter.format_new_stocks(future_stocks)
+        markdown = formatter.format_new_stocks(subscribable_stocks, future_stocks)
 
         # 4. 输出到控制台（供 n8n 读取）
         logger.info("步骤 4/4: 输出到控制台")
         print(markdown)
 
         logger.info("=" * 60)
-        logger.info(f"程序执行完成，共获取 {len(future_stocks)} 只港股新股")
+        total_stocks = len(subscribable_stocks) + len(future_stocks)
+        logger.info(f"程序执行完成，共获取 {total_stocks} 只港股新股")
         logger.info("=" * 60)
 
     except Exception as e:
