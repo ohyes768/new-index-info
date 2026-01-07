@@ -145,12 +145,33 @@ class DataFetcher:
 
         for _, row in df.iterrows():
             try:
+                # 获取原始申购日期和网上申购日期
+                issue_date_raw = row.get("申购日期")
+                # 使用列索引直接访问，避免中文列名问题
+                online_start = row.iloc[9]  # 网上申购日期
+                online_end = row.iloc[10]   # 网上申购日期结束
+
+                # 组合日期范围字符串
+                issue_date_range = None
+                if pd.notna(online_start) and pd.notna(online_end):
+                    # 如果有开始和结束日期，组合成范围
+                    start_str = str(online_start)[:10]
+                    end_str = str(online_end)[:10]
+                    issue_date_range = f"{start_str}至{end_str}"
+                    self.logger.debug(f"股票 {row.get('证券简称')}: 组合日期范围 {issue_date_range}")
+                elif pd.notna(issue_date_raw):
+                    # 如果只有单个日期，使用该日期
+                    date_str = str(issue_date_raw)[:10] if len(str(issue_date_raw)) >= 10 else str(issue_date_raw)
+                    issue_date_range = date_str
+                    self.logger.debug(f"股票 {row.get('证券简称')}: 使用单个日期 {issue_date_range}")
+
                 # 根据实际返回字段进行解析
                 # 字段映射基于 ak.stock_new_ipo_cninfo() 的返回结果
                 stock_info = NewStockInfo(
                     stock_code=str(row.get("证劵代码", "")),
                     stock_name=str(row.get("证券简称", "")),
-                    issue_date=self._parse_date(row.get("申购日期")),
+                    issue_date=self._parse_date(issue_date_raw),
+                    issue_date_range=issue_date_range,  # 新增：保存组合后的日期范围
                     subscription_code=str(row.get("证劵代码", "")),  # 申购代码通常与股票代码相同
                     issue_price=self._parse_float(row.get("发行价")),
                     issue_quantity=self._parse_float(row.get("总发行数量")),
@@ -477,7 +498,13 @@ class MarkdownFormatter:
         lines.append("| 项目 | 信息 |")
         lines.append("|------|------|")
         lines.append(f"| **申购代码** | {stock.subscription_code} |")
-        lines.append(f"| **申购日期** | {stock.issue_date.strftime('%Y-%m-%d')} |")
+
+        # 优先使用日期范围，如果没有则使用单个日期
+        if stock.issue_date_range:
+            lines.append(f"| **申购日期** | {stock.issue_date_range} |")
+        elif stock.issue_date:
+            lines.append(f"| **申购日期** | {stock.issue_date.strftime('%Y-%m-%d')} |")
+
         lines.append(f"| **发行价格** | {stock.get_formatted_price()} |")
 
         if stock.issue_quantity:

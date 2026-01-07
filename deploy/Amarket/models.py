@@ -18,7 +18,8 @@ class NewStockInfo:
     Attributes:
         stock_code: 股票代码（如 "301001"）
         stock_name: 股票名称（如 "XYZ科技"）
-        issue_date: 发行日期（datetime对象）
+        issue_date: 发行日期（datetime对象，用于筛选）
+        issue_date_range: 发行日期范围（原始字符串，如 "2025-12-30至2026-01-05"）
         subscription_code: 申购代码（如 "301001"）
         issue_price: 发行价格（元，可能为None表示待定）
         issue_quantity: 发行数量（万股）
@@ -34,6 +35,7 @@ class NewStockInfo:
     stock_name: str
     issue_date: datetime
     subscription_code: str
+    issue_date_range: Optional[str] = None  # 新增：保存原始日期范围
     issue_price: Optional[float] = None
     issue_quantity: Optional[float] = None
     subscription_limit: Optional[float] = None
