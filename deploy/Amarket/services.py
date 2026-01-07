@@ -218,10 +218,8 @@ class DataFetcher:
                     if industry:
                         stock.industry = str(industry)
 
-                    # 获取公司简介（优先使用机构简介，否则使用主营业务）
-                    intro = df_profile.iloc[0].get("机构简介", "")
-                    if not intro or pd.isna(intro):
-                        intro = df_profile.iloc[0].get("主营业务", "")
+                    # 获取公司简介（直接使用主营业务）
+                    intro = df_profile.iloc[0].get("主营业务", "")
 
                     if intro and not pd.isna(intro):
                         # 限制简介长度，避免过长
