@@ -187,13 +187,13 @@ bash scripts/start.sh
 
 ```bash
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8010/health
 
 # 获取 A股新股信息
-curl http://localhost:8000/api/a-stock
+curl http://localhost:8010/api/a-stock
 
 # 获取港股新股信息
-curl http://localhost:8000/api/hk-stock
+curl http://localhost:8010/api/hk-stock
 ```
 
 ### API 端点
@@ -235,7 +235,7 @@ curl http://localhost:8000/api/hk-stock
 LOG_LEVEL=INFO
 
 # Gateway 配置
-GATEWAY_PORT=8000
+GATEWAY_PORT=8010
 TIMEOUT=30
 
 # A股服务配置
@@ -274,7 +274,7 @@ bash scripts/stop.sh
 
 1. **节点配置**：
    - Method: `GET`
-   - URL: `http://your-server:8000/api/a-stock`
+   - URL: `http://your-server:8010/api/a-stock`
    - Authentication: `None`
 
 2. **响应处理**：

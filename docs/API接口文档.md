@@ -3,7 +3,7 @@
 **版本**: v2.0.0
 **最后更新**: 2026-01-29
 **API 类型**: RESTful API
-**基础 URL**: `http://localhost:8000`
+**基础 URL**: `http://localhost:8010`
 
 ---
 
@@ -42,7 +42,7 @@
 ### 访问方式
 
 **推荐方式**：通过 Gateway 访问（统一入口）
-- 基础 URL：`http://localhost:8000`
+- 基础 URL：`http://localhost:8010`
 - 优点：统一接口、简化配置、便于扩展
 
 **直接方式**：直接访问后端服务（内部网络）
@@ -354,13 +354,13 @@ bash scripts/start.sh
 
 ```bash
 # 测试健康检查
-curl http://localhost:8000/health
+curl http://localhost:8010/health
 
 # 测试 A股接口
-curl http://localhost:8000/api/a-stock
+curl http://localhost:8010/api/a-stock
 
 # 测试港股接口
-curl http://localhost:8000/api/hk-stock
+curl http://localhost:8010/api/hk-stock
 ```
 
 ### 配置说明
@@ -372,7 +372,7 @@ curl http://localhost:8000/api/hk-stock
 LOG_LEVEL=INFO
 
 # Gateway 配置
-GATEWAY_PORT=8000
+GATEWAY_PORT=8010
 TIMEOUT=30
 
 # A股服务配置
@@ -414,13 +414,13 @@ bash scripts/stop.sh
 #### A股新股信息
 
 ```bash
-curl http://localhost:8000/api/a-stock
+curl http://localhost:8010/api/a-stock
 ```
 
 #### 港股新股信息
 
 ```bash
-curl http://localhost:8000/api/hk-stock
+curl http://localhost:8010/api/hk-stock
 ```
 
 ### Python (requests)
@@ -429,7 +429,7 @@ curl http://localhost:8000/api/hk-stock
 import requests
 
 # 获取 A股新股信息
-response = requests.get("http://localhost:8000/api/a-stock")
+response = requests.get("http://localhost:8010/api/a-stock")
 data = response.json()
 
 if data["success"]:
@@ -447,7 +447,7 @@ else:
 1. 添加 **HTTP Request** 节点
 2. 配置：
    - Method: `GET`
-   - URL: `http://your-server:8000/api/a-stock`
+   - URL: `http://your-server:8010/api/a-stock`
    - Authentication: `None`
 
 **后续处理**：
@@ -459,7 +459,7 @@ else:
 
 ```javascript
 // 获取 A股新股信息
-fetch("http://localhost:8000/api/a-stock")
+fetch("http://localhost:8010/api/a-stock")
   .then(response => response.json())
   .then(data => {
     if (data.success) {

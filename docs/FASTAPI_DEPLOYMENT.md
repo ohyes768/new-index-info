@@ -154,16 +154,16 @@ Creating hk-stock-service       ... done
 
 API 端点:
 Gateway (统一入口):
-  http://localhost:8000/health
-  http://localhost:8000/api/a-stock
-  http://localhost:8000/api/hk-stock
+  http://localhost:8010/health
+  http://localhost:8010/api/a-stock
+  http://localhost:8010/api/hk-stock
 ```
 
 #### 3. 测试端点
 
 **测试健康检查**：
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8010/health
 ```
 
 预期响应：
@@ -177,7 +177,7 @@ curl http://localhost:8000/health
 
 **测试 A股接口**：
 ```bash
-curl http://localhost:8000/api/a-stock
+curl http://localhost:8010/api/a-stock
 ```
 
 预期响应：
@@ -193,7 +193,7 @@ curl http://localhost:8000/api/a-stock
 
 **测试港股接口**：
 ```bash
-curl http://localhost:8000/api/hk-stock
+curl http://localhost:8010/api/hk-stock
 ```
 
 预期响应：
@@ -263,8 +263,8 @@ Error: bind: address already in use
 **解决方案**：
 ```bash
 # 检查端口占用
-lsof -i :8000
-netstat -ano | findstr :8000
+lsof -i :8010
+netstat -ano | findstr :8010
 
 # 或修改端口
 export GATEWAY_PORT=8001
