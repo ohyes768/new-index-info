@@ -1,24 +1,48 @@
 # 新股发行信息获取系统
 
-自动获取未来10天内沪深两市的新股发行信息，并以 Markdown 格式输出到控制台。
+自动获取沪深两市和港股的新股发行信息，支持命令行工具和 FastAPI RESTful API 两种使用方式。
 
 ## 功能特性
 
-- ✅ 自动获取未来10天的新股发行信息
+- ✅ 支持 A股和港股新股信息获取
 - ✅ 完整的股票信息（申购代码、申购日期、发行价格、行业、公司简介等）
 - ✅ 详细的市场分类（上海-主板、上海-科创板、深圳-主板、深圳-创业板、北交所）
 - ✅ 以 Markdown 格式输出，便于阅读和二次处理
 - ✅ 完善的日志记录
-- ✅ 简洁的代码架构（仅 3 个 Python 文件）
+- ✅ **FastAPI RESTful API** - 通过 HTTP API 调用
+- ✅ **Docker Compose 一键部署** - 微服务架构，易于扩展
 
 ## 技术栈
 
+### 命令行工具
 - **Python 3.10+**
-- **akshare**: 免费财经数据接口
+- **akshare**: 免费财经数据接口（A股）
 - **pandas**: 数据处理
-- **uv**: 现代化的包管理工具（可选）
+- **requests**: HTTP 请求（港股）
+- **beautifulsoup4**: HTML 解析（港股）
 
-## 快速开始
+### FastAPI 服务
+- **FastAPI**: 现代化的 Web 框架
+- **Docker & Docker Compose**: 容器化部署
+- **httpx**: 异步 HTTP 客户端
+
+## 使用方式
+
+本项目支持两种使用方式：
+
+### 方式一：命令行工具（原有方式）
+
+适合个人使用或简单场景。
+
+### 方式二：FastAPI RESTful API（推荐）
+
+适合集成到自动化工具（如 n8n）或需要长期运行的服务。
+
+---
+
+## 方式一：命令行工具
+
+### 快速开始
 
 ### 1. 安装依赖
 
@@ -119,7 +143,186 @@ cd /path/to/new-index-info/deploy && ../.venv/bin/python main_simple.py
 
 然后读取标准输出作为后续节点的输入，添加钉钉节点推送 Markdown 内容。
 
-## 项目结构
+---
+
+## 方式二：FastAPI RESTful API
+
+### 架构设计
+
+采用 **Gateway + 后端服务** 微服务架构：
+
+```
+n8n / 客户端
+    ↓
+Gateway (8000) - 统一入口
+    ↓
+├── A-Stock Service (8001) - A股新股服务
+└── HK-Stock Service (8002) - 港股新股服务
+```
+
+### 快速开始
+
+#### 1. 前置要求
+
+安装 Docker 和 Docker Compose：
+```bash
+# 验证安装
+docker --version
+docker-compose --version
+```
+
+#### 2. 构建镜像
+
+```bash
+bash scripts/build.sh
+```
+
+#### 3. 启动服务
+
+```bash
+bash scripts/start.sh
+```
+
+#### 4. 测试 API
+
+```bash
+# 健康检查
+curl http://localhost:8000/health
+
+# 获取 A股新股信息
+curl http://localhost:8000/api/a-stock
+
+# 获取港股新股信息
+curl http://localhost:8000/api/hk-stock
+```
+
+### API 端点
+
+#### Gateway 对外端点（统一入口）
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | Gateway 健康检查 |
+| `/api/a-stock` | GET | 获取 A股新股信息 |
+| `/api/hk-stock` | GET | 获取港股新股信息 |
+
+#### 响应格式
+
+**成功响应**：
+```json
+{
+  "success": true,
+  "market": "A股",
+  "data": "# A股新股发行信息\n...",
+  "subscribable_count": 2,
+  "future_count": 5
+}
+```
+
+**错误响应**：
+```json
+{
+  "error": "服务暂时不可用"
+}
+```
+
+### 配置说明
+
+编辑 `docker/.env` 文件自定义配置：
+
+```bash
+# 日志级别
+LOG_LEVEL=INFO
+
+# Gateway 配置
+GATEWAY_PORT=8000
+TIMEOUT=30
+
+# A股服务配置
+FETCH_TIMEOUT=10
+MAX_RETRIES=3
+
+# 港股服务配置
+MIN_INTERVAL=5
+```
+
+### 查看日志
+
+```bash
+# 查看所有服务日志
+docker-compose -f docker/docker-compose.yml logs -f
+
+# 查看 Gateway 日志
+docker-compose -f docker/docker-compose.yml logs -f gateway
+
+# 查看 A股服务日志
+docker-compose -f docker/docker-compose.yml logs -f a_stock_service
+
+# 查看港股服务日志
+docker-compose -f docker/docker-compose.yml logs -f hk_stock_service
+```
+
+### 停止服务
+
+```bash
+bash scripts/stop.sh
+```
+
+### 集成到 n8n 2.x
+
+在 n8n 中使用 **HTTP Request** 节点：
+
+1. **节点配置**：
+   - Method: `GET`
+   - URL: `http://your-server:8000/api/a-stock`
+   - Authentication: `None`
+
+2. **响应处理**：
+   - 使用 JSON 数据的 `data` 字段（Markdown 格式）
+   - 使用 `subscribable_count` 和 `future_count` 进行条件判断
+
+3. **示例 Workflow**：
+   ```
+   HTTP Request → IF (subscribable_count > 0) → 钉钉/企业微信推送
+   ```
+
+### 项目结构（FastAPI 版本）
+
+```
+new-index-info/
+├── backend/                          # FastAPI 后端服务
+│   ├── gateway/                      # Gateway 服务
+│   │   ├── main.py                   # 入口文件
+│   │   ├── config.py                 # 配置管理
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   ├── a_stock_service/              # A股服务
+│   │   ├── main.py
+│   │   ├── models/                   # 数据模型
+│   │   ├── services/                 # 业务逻辑
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── hk_stock_service/             # 港股服务
+│       ├── main.py
+│       ├── models/
+│       ├── services/
+│       ├── Dockerfile
+│       └── requirements.txt
+├── docker/                           # Docker 配置
+│   ├── docker-compose.yml            # 服务编排
+│   └── .env.example                  # 环境变量模板
+├── scripts/                          # 启动脚本
+│   ├── build.sh
+│   ├── start.sh
+│   └── stop.sh
+└── deploy/                           # 保留命令行工具
+    ├── Amarket/
+    └── Hmarket/
+```
+
+---
+
+## 项目结构（命令行版本）
 
 ```
 new-index-info/

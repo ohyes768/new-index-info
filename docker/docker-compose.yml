@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Gateway 服务（统一入口）
+  gateway:
+    build:
+      context: ../backend/gateway
+      dockerfile: Dockerfile
+    container_name: new-stock-gateway
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - A_STOCK_SERVICE_URL=http://a_stock_service:8001
+      - HK_STOCK_SERVICE_URL=http://hk_stock_service:8002
+      - TIMEOUT=${TIMEOUT:-30}
+    networks:
+      - stock-network
+    depends_on:
+      - a_stock_service
+      - hk_stock_service
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # A股新股信息服务
+  a_stock_service:
+    build:
+      context: ../backend/a_stock_service
+      dockerfile: Dockerfile
+    container_name: a-stock-service
+    expose:
+      - "8001"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FETCH_TIMEOUT=${FETCH_TIMEOUT:-10}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+    networks:
+      - stock-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 港股新股信息服务
+  hk_stock_service:
+    build:
+      context: ../backend/hk_stock_service
+      dockerfile: Dockerfile
+    container_name: hk-stock-service
+    expose:
+      - "8002"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FETCH_TIMEOUT=${FETCH_TIMEOUT:-10}
+      - MIN_INTERVAL=${MIN_INTERVAL:-5}
+    networks:
+      - stock-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  stock-network:
+    driver: bridge

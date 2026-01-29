@@ -18,6 +18,7 @@ output/
 # 配置
 .env
 .config.json
+docker/.env
 
 # Python
 __pycache__/
@@ -25,8 +26,12 @@ __pycache__/
 *$py.class
 *.so
 .Python
+**/__pycache__/
 
 # 测试
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Docker
+*.tar

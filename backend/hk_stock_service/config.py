@@ -1,0 +1,27 @@
+"""
+配置管理
+
+从环境变量加载配置
+"""
+
+import os
+from typing import Optional
+
+
+class Config:
+    """应用配置类"""
+
+    # 日志配置
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # 数据获取配置
+    FETCH_TIMEOUT: int = int(os.getenv("FETCH_TIMEOUT", "10"))
+    MIN_INTERVAL: int = int(os.getenv("MIN_INTERVAL", "5"))
+
+    # 服务配置
+    APP_NAME: str = "港股新股信息服务"
+    VERSION: str = "1.0.0"
+
+
+# 全局配置实例
+config = Config()
