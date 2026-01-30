@@ -1,9 +1,11 @@
 # 新股发行信息获取系统 - API 接口文档
 
-**版本**: v2.0.0
-**最后更新**: 2026-01-29
+**版本**: v2.1.0
+**最后更新**: 2026-01-30
 **API 类型**: RESTful API
-**基础 URL**: `http://localhost:8010`
+**基础 URL**:
+- A股服务: `http://localhost:8001`
+- 港股服务: `http://localhost:8002`
 
 ---
 
@@ -11,6 +13,7 @@
 
 | 日期 | 版本 | 变更内容 |
 |------|------|----------|
+| 2026-01-30 | v2.1.0 | 移除 Gateway,改为直接访问后端服务 |
 | 2026-01-29 | v2.0.0 | 新增 FastAPI RESTful API 接口 |
 
 ---
@@ -18,8 +21,8 @@
 ## 目录
 
 - [API 概述](#api-概述)
-- [Gateway 接口](#gateway-接口)
-- [后端服务接口](#后端服务接口)
+- [A股服务接口](#a股服务接口)
+- [港股服务接口](#港股服务接口)
 - [响应格式](#响应格式)
 - [错误处理](#错误处理)
 - [部署说明](#部署说明)
@@ -31,39 +34,44 @@
 
 ### 架构说明
 
-新股信息 API 采用 **Gateway + 后端服务** 微服务架构：
+新股信息 API 采用 **独立后端服务** 架构：
 
 ```
-客户端 → Gateway (8000) → 后端服务
-                        ├─ A股服务 (8001)
-                        └─ 港股服务 (8002)
+客户端 → A股服务 (8001)
+客户端 → 港股服务 (8002)
 ```
 
 ### 访问方式
 
-**推荐方式**：通过 Gateway 访问（统一入口）
-- 基础 URL：`http://localhost:8010`
-- 优点：统一接口、简化配置、便于扩展
+**A股服务**：
+- 基础 URL：`http://localhost:8001`
+- 用于获取 A股新股信息
 
-**直接方式**：直接访问后端服务（内部网络）
-- A股服务：`http://localhost:8001`
-- 港股服务：`http://localhost:8002`
-- 注意：仅用于内部网络或开发调试
+**港股服务**：
+- 基础 URL：`http://localhost:8002`
+- 用于获取港股新股信息
 
 ### 技术栈
 
 - **框架**：FastAPI 0.104.1+
 - **服务器**：Uvicorn (ASGI)
-- **HTTP 客户端**：httpx（异步）
 - **部署方式**：Docker Compose
 
 ---
 
-## Gateway 接口
+## A股服务接口
+
+### 基础信息
+
+- **服务名称**: A股新股服务
+- **端口**: 8001
+- **基础 URL**: `http://localhost:8001`
+
+---
 
 ### 1. 健康检查
 
-检查 Gateway 服务是否正常运行。
+检查 A股服务是否正常运行。
 
 **请求**：
 ```
@@ -74,8 +82,8 @@ GET /health
 ```json
 {
   "status": "ok",
-  "service": "gateway",
-  "timestamp": "2026-01-29T10:30:45.123456"
+  "service": "a-stock",
+  "timestamp": "2026-01-30T10:30:45.123456"
 }
 ```
 
@@ -83,7 +91,7 @@ GET /health
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | status | string | 服务状态，固定为 "ok" |
-| service | string | 服务名称，固定为 "gateway" |
+| service | string | 服务名称，固定为 "a-stock" |
 | timestamp | string | ISO 8601 格式的时间戳 |
 
 **状态码**：
@@ -97,7 +105,7 @@ GET /health
 
 **请求**：
 ```
-GET /api/a-stock
+GET /api/stocks
 ```
 
 **响应示例**：
@@ -105,7 +113,7 @@ GET /api/a-stock
 {
   "success": true,
   "market": "A股",
-  "data": "# A股新股发行信息\n\n**生成时间**: 2026-01-29 10:30:45\n**新股数量**: 3 只\n\n---\n\n## 当前可申购的新股\n\n### XX科技股份有限公司（688123）\n\n| 项目 | 信息 |\n|------|------|\n| **申购代码** | 788123 |\n| **申购日期** | 2026-01-25至2026-01-25 |\n...",
+  "data": "# A股新股发行信息\n\n**生成时间**: 2026-01-30 10:30:45\n**新股数量**: 3 只\n\n---\n\n## 当前可申购的新股\n\n### XX科技股份有限公司（688123）\n\n| 项目 | 信息 |\n|------|------|\n| **申购代码** | 788123 |\n| **申购日期** | 2026-01-25至2026-01-25 |\n...",
   "subscribable_count": 2,
   "future_count": 5
 }
@@ -122,22 +130,60 @@ GET /api/a-stock
 
 **状态码**：
 - `200 OK` - 成功获取数据
-- `503 Service Unavailable` - 后端服务超时或不可用
 - `500 Internal Server Error` - 内部服务错误
 
 **性能指标**：
 - 响应时间：2-5 秒（取决于 akshare API）
-- 超时时间：30 秒
 
 ---
 
-### 3. 获取港股新股信息
+## 港股服务接口
+
+### 基础信息
+
+- **服务名称**: 港股新股服务
+- **端口**: 8002
+- **基础 URL**: `http://localhost:8002`
+
+---
+
+### 1. 健康检查
+
+检查港股服务是否正常运行。
+
+**请求**：
+```
+GET /health
+```
+
+**响应示例**：
+```json
+{
+  "status": "ok",
+  "service": "hk-stock",
+  "timestamp": "2026-01-30T10:30:45.123456"
+}
+```
+
+**字段说明**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| status | string | 服务状态，固定为 "ok" |
+| service | string | 服务名称，固定为 "hk-stock" |
+| timestamp | string | ISO 8601 格式的时间戳 |
+
+**状态码**：
+- `200 OK` - 服务正常
+
+---
+
+### 2. 获取港股新股信息
 
 获取当前可申购和未来 14 天内即将开放申购的港股新股信息。
 
 **请求**：
 ```
-GET /api/hk-stock
+GET /api/stocks
 ```
 
 **响应示例**：
@@ -145,7 +191,7 @@ GET /api/hk-stock
 {
   "success": true,
   "market": "港股",
-  "data": "# 港股新股发行信息\n\n**生成时间**: 2026-01-29 10:30:45\n**新股数量**: 2 只\n\n---\n\n## 当前可申购的新股\n\n### 腾讯控股有限公司（00700）\n\n| 项目 | 信息 |\n|------|------|\n| **股票代码** | 00700 |\n| **申购日期** | 2026-01-25至2026-01-30 |\n...",
+  "data": "# 港股新股发行信息\n\n**生成时间**: 2026-01-30 10:30:45\n**新股数量**: 2 只\n\n---\n\n## 当前可申购的新股\n\n### 腾讯控股有限公司（00700）\n\n| 项目 | 信息 |\n|------|------|\n| **股票代码** | 00700 |\n| **申购日期** | 2026-01-25至2026-01-30 |\n...",
   "subscribable_count": 1,
   "future_count": 3
 }
@@ -162,74 +208,10 @@ GET /api/hk-stock
 
 **状态码**：
 - `200 OK` - 成功获取数据
-- `503 Service Unavailable` - 后端服务超时或不可用
 - `500 Internal Server Error` - 内部服务错误
 
 **性能指标**：
 - 响应时间：10-30 秒（需要爬取网页，有反爬间隔）
-- 超时时间：30 秒
-
----
-
-## 后端服务接口
-
-以下接口仅用于内部网络通信，建议通过 Gateway 访问。
-
-### A股服务（端口 8001）
-
-#### 健康检查
-
-**请求**：
-```
-GET http://localhost:8001/health
-```
-
-**响应**：
-```json
-{
-  "status": "ok",
-  "service": "a-stock",
-  "timestamp": "2026-01-29T10:30:45.123456"
-}
-```
-
-#### 获取新股信息
-
-**请求**：
-```
-GET http://localhost:8001/api/stocks
-```
-
-**响应**：与 Gateway `/api/a-stock` 相同
-
----
-
-### 港股服务（端口 8002）
-
-#### 健康检查
-
-**请求**：
-```
-GET http://localhost:8002/health
-```
-
-**响应**：
-```json
-{
-  "status": "ok",
-  "service": "hk-stock",
-  "timestamp": "2026-01-29T10:30:45.123456"
-}
-```
-
-#### 获取新股信息
-
-**请求**：
-```
-GET http://localhost:8002/api/stocks
-```
-
-**响应**：与 Gateway `/api/hk-stock` 相同
 
 ---
 
@@ -285,14 +267,14 @@ GET http://localhost:8002/api/stocks
 
 ```json
 {
+  "success": false,
   "error": "错误描述信息"
 }
 ```
 
 **常见错误**：
-- `"服务请求超时"` - Gateway 到后端服务的请求超时（>30秒）
-- `"服务暂时不可用"` - 后端服务不可用或网络错误
 - `"内部服务错误"` - 未预期的内部错误
+- `"数据获取失败"` - akshare API 或网页抓取失败
 
 ---
 
@@ -304,18 +286,16 @@ GET http://localhost:8002/api/stocks
 |--------|------|----------|
 | 200 OK | 成功 | 正常处理响应数据 |
 | 500 Internal Server Error | 内部错误 | 检查日志，稍后重试 |
-| 503 Service Unavailable | 服务不可用 | 检查后端服务状态，稍后重试 |
 
 ### 超时处理
 
-**Gateway 超时**：
-- 超时时间：30 秒
-- 处理方式：返回 503 状态码和错误信息
-- 建议：客户端应实现重试机制
+**A股服务**：
+- 响应时间：2-5 秒
+- 建议客户端超时设置：30 秒
 
-**数据获取超时**：
-- A股：10 秒（可配置）
-- 港股：可配置（默认 10 秒）
+**港股服务**：
+- 响应时间：10-30 秒
+- 建议客户端超时设置：60 秒
 
 ### 重试策略
 
@@ -353,14 +333,17 @@ bash scripts/start.sh
 #### 3. 验证服务
 
 ```bash
-# 测试健康检查
-curl http://localhost:8010/health
+# 测试 A股服务健康检查
+curl http://localhost:8001/health
 
 # 测试 A股接口
-curl http://localhost:8010/api/a-stock
+curl http://localhost:8001/api/stocks
+
+# 测试港股服务健康检查
+curl http://localhost:8002/health
 
 # 测试港股接口
-curl http://localhost:8010/api/hk-stock
+curl http://localhost:8002/api/stocks
 ```
 
 ### 配置说明
@@ -368,13 +351,6 @@ curl http://localhost:8010/api/hk-stock
 编辑 `docker/.env` 文件自定义配置：
 
 ```bash
-# 日志级别
-LOG_LEVEL=INFO
-
-# Gateway 配置
-GATEWAY_PORT=8010
-TIMEOUT=30
-
 # A股服务配置
 FETCH_TIMEOUT=10
 MAX_RETRIES=3
@@ -388,9 +364,6 @@ MIN_INTERVAL=5
 ```bash
 # 查看所有服务日志
 docker-compose -f docker/docker-compose.yml logs -f
-
-# 查看 Gateway 日志
-docker-compose -f docker/docker-compose.yml logs -f gateway
 
 # 查看 A股服务日志
 docker-compose -f docker/docker-compose.yml logs -f a_stock_service
@@ -414,13 +387,13 @@ bash scripts/stop.sh
 #### A股新股信息
 
 ```bash
-curl http://localhost:8010/api/a-stock
+curl http://localhost:8001/api/stocks
 ```
 
 #### 港股新股信息
 
 ```bash
-curl http://localhost:8010/api/hk-stock
+curl http://localhost:8002/api/stocks
 ```
 
 ### Python (requests)
@@ -429,7 +402,7 @@ curl http://localhost:8010/api/hk-stock
 import requests
 
 # 获取 A股新股信息
-response = requests.get("http://localhost:8010/api/a-stock")
+response = requests.get("http://localhost:8001/api/stocks")
 data = response.json()
 
 if data["success"]:
@@ -447,7 +420,8 @@ else:
 1. 添加 **HTTP Request** 节点
 2. 配置：
    - Method: `GET`
-   - URL: `http://your-server:8010/api/a-stock`
+   - URL: `http://your-server:8001/api/stocks`（A股）
+   - URL: `http://your-server:8002/api/stocks`（港股）
    - Authentication: `None`
 
 **后续处理**：
@@ -459,7 +433,7 @@ else:
 
 ```javascript
 // 获取 A股新股信息
-fetch("http://localhost:8010/api/a-stock")
+fetch("http://localhost:8001/api/stocks")
   .then(response => response.json())
   .then(data => {
     if (data.success) {
@@ -484,11 +458,13 @@ fetch("http://localhost:8010/api/a-stock")
 
 1. **缓存数据**：新股信息更新不频繁，可以缓存 5-10 分钟
 2. **并发请求**：A股和港股接口可以并发请求
-3. **超时设置**：客户端建议设置 60 秒超时（大于 Gateway 的 30 秒）
+3. **超时设置**：
+   - A股服务建议设置 30 秒超时
+   - 港股服务建议设置 60 秒超时
 
 ### 服务端优化
 
-1. **水平扩展**：通过增加 Gateway 和后端服务实例扩展
+1. **水平扩展**：通过增加服务实例扩展
 2. **负载均衡**：使用 nginx 或 Traefik 进行负载均衡
 3. **缓存机制**：后端服务添加 Redis 缓存，减少 API 调用
 
@@ -534,8 +510,8 @@ fetch("http://localhost:8010/api/a-stock")
 ### 推荐监控指标
 
 1. **服务可用性**：
-   - Gateway 健康检查
-   - 后端服务健康检查
+   - A股服务健康检查
+   - 港股服务健康检查
 
 2. **性能指标**：
    - 响应时间（P50、P95、P99）
@@ -544,7 +520,7 @@ fetch("http://localhost:8010/api/a-stock")
 
 3. **业务指标**：
    - 每日请求量
-   - A股/新股数量变化
+   - A股/港股新股数量变化
 
 ### 监控工具
 
@@ -603,10 +579,11 @@ fetch("http://localhost:8010/api/a-stock")
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| v2.1.0 | 2026-01-30 | 移除 Gateway，改为直接访问后端服务 |
 | v2.0.0 | 2026-01-29 | 初始版本，FastAPI RESTful API |
 
 ---
 
 **文档结束**
 
-© 2026 新股发行信息获取系统 | v2.0.0
+© 2026 新股发行信息获取系统 | v2.1.0

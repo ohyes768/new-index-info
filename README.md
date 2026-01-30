@@ -149,12 +149,10 @@ cd /path/to/new-index-info/deploy && ../.venv/bin/python main_simple.py
 
 ### 架构设计
 
-采用 **Gateway + 后端服务** 微服务架构：
+采用 **独立后端服务** 架构：
 
 ```
 n8n / 客户端
-    ↓
-Gateway (8000) - 统一入口
     ↓
 ├── A-Stock Service (8001) - A股新股服务
 └── HK-Stock Service (8002) - 港股新股服务
@@ -186,25 +184,34 @@ bash scripts/start.sh
 #### 4. 测试 API
 
 ```bash
-# 健康检查
-curl http://localhost:8010/health
+# A股服务健康检查
+curl http://localhost:8001/health
 
 # 获取 A股新股信息
-curl http://localhost:8010/api/a-stock
+curl http://localhost:8001/api/stocks
+
+# 港股服务健康检查
+curl http://localhost:8002/health
 
 # 获取港股新股信息
-curl http://localhost:8010/api/hk-stock
+curl http://localhost:8002/api/stocks
 ```
 
 ### API 端点
 
-#### Gateway 对外端点（统一入口）
+#### A股服务（端口 8001）
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
-| `/health` | GET | Gateway 健康检查 |
-| `/api/a-stock` | GET | 获取 A股新股信息 |
-| `/api/hk-stock` | GET | 获取港股新股信息 |
+| `/health` | GET | A股服务健康检查 |
+| `/api/stocks` | GET | 获取 A股新股信息 |
+
+#### 港股服务（端口 8002）
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 港股服务健康检查 |
+| `/api/stocks` | GET | 获取港股新股信息 |
 
 #### 响应格式
 
@@ -234,10 +241,6 @@ curl http://localhost:8010/api/hk-stock
 # 日志级别
 LOG_LEVEL=INFO
 
-# Gateway 配置
-GATEWAY_PORT=8010
-TIMEOUT=30
-
 # A股服务配置
 FETCH_TIMEOUT=10
 MAX_RETRIES=3
@@ -251,9 +254,6 @@ MIN_INTERVAL=5
 ```bash
 # 查看所有服务日志
 docker-compose -f docker/docker-compose.yml logs -f
-
-# 查看 Gateway 日志
-docker-compose -f docker/docker-compose.yml logs -f gateway
 
 # 查看 A股服务日志
 docker-compose -f docker/docker-compose.yml logs -f a_stock_service
@@ -274,7 +274,7 @@ bash scripts/stop.sh
 
 1. **节点配置**：
    - Method: `GET`
-   - URL: `http://your-server:8010/api/a-stock`
+   - URL: `http://your-server:8001/api/stocks`（A股）或 `http://your-server:8002/api/stocks`（港股）
    - Authentication: `None`
 
 2. **响应处理**：
@@ -291,11 +291,6 @@ bash scripts/stop.sh
 ```
 new-index-info/
 ├── backend/                          # FastAPI 后端服务
-│   ├── gateway/                      # Gateway 服务
-│   │   ├── main.py                   # 入口文件
-│   │   ├── config.py                 # 配置管理
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
 │   ├── a_stock_service/              # A股服务
 │   │   ├── main.py
 │   │   ├── models/                   # 数据模型

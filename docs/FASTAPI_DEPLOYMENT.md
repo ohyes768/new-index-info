@@ -1,29 +1,26 @@
-# FastAPI 微服务改造完成总结
+# FastAPI 独立服务部署总结
 
 ## ✅ 已完成的工作
 
 ### 1. 项目架构改造
-- ✅ 将原有命令行工具改造为 FastAPI 微服务架构
-- ✅ 采用 Gateway + 后端服务模式，便于后续扩展
+- ✅ 将原有命令行工具改造为 FastAPI 独立服务架构
+- ✅ 采用独立服务模式，简化部署和运维
 - ✅ 支持 A股和港股新股信息查询
 
 ### 2. 服务拆分
 创建了以下独立服务：
 
-#### Gateway 服务（端口 8000）
-- 统一入口，路由转发
-- 健康检查端点
-- 错误处理和日志记录
-
 #### A-Stock Service（端口 8001）
 - 封装 A股业务逻辑
 - 复用现有 `DataFetcher`, `DataProcessor`, `MarkdownFormatter`
 - 提供 `/api/stocks` 端点
+- 提供 `/health` 健康检查端点
 
 #### HK-Stock Service（端口 8002）
 - 封装港股业务逻辑
 - 复用现有 `HKDataFetcher`, `HKDataProcessor`, `HKMarkdownFormatter`
 - 提供 `/api/stocks` 端点
+- 提供 `/health` 健康检查端点
 
 ### 3. Docker 配置
 - ✅ 为每个服务编写 Dockerfile
@@ -46,15 +43,7 @@
 
 ```
 new-index-info/
-├── backend/                          # FastAPI 后端服务（新增）
-│   ├── gateway/                      # Gateway 服务
-│   │   ├── main.py                   # 入口文件
-│   │   ├── config.py                 # 配置管理
-│   │   ├── utils/
-│   │   │   ├── __init__.py
-│   │   │   └── logger.py             # 日志配置
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
+├── backend/                          # FastAPI 后端服务
 │   ├── a_stock_service/              # A股服务
 │   │   ├── main.py
 │   │   ├── config.py
@@ -81,10 +70,10 @@ new-index-info/
 │       │   └── formatter.py          # HKMarkdownFormatter
 │       ├── Dockerfile
 │       └── requirements.txt
-├── docker/                           # Docker 配置（新增）
+├── docker/                           # Docker 配置
 │   ├── docker-compose.yml
 │   └── .env.example
-├── scripts/                          # 启动脚本（新增）
+├── scripts/                          # 启动脚本
 │   ├── build.sh
 │   ├── start.sh
 │   └── stop.sh
@@ -144,7 +133,6 @@ bash scripts/start.sh
 
 启动所有服务...
 Creating network "new-index-info_stock-network" ...
-Creating new-stock-gateway      ... done
 Creating a-stock-service        ... done
 Creating hk-stock-service       ... done
 
@@ -153,31 +141,34 @@ Creating hk-stock-service       ... done
 ==========================================
 
 API 端点:
-Gateway (统一入口):
-  http://localhost:8010/health
-  http://localhost:8010/api/a-stock
-  http://localhost:8010/api/hk-stock
+A股服务:
+  http://localhost:8001/health
+  http://localhost:8001/api/stocks
+
+港股服务:
+  http://localhost:8002/health
+  http://localhost:8002/api/stocks
 ```
 
 #### 3. 测试端点
 
-**测试健康检查**：
+**测试 A股服务健康检查**：
 ```bash
-curl http://localhost:8010/health
+curl http://localhost:8001/health
 ```
 
 预期响应：
 ```json
 {
   "status": "ok",
-  "service": "gateway",
-  "timestamp": "2026-01-29T..."
+  "service": "a-stock",
+  "timestamp": "2026-01-30T..."
 }
 ```
 
 **测试 A股接口**：
 ```bash
-curl http://localhost:8010/api/a-stock
+curl http://localhost:8001/api/stocks
 ```
 
 预期响应：
@@ -193,7 +184,7 @@ curl http://localhost:8010/api/a-stock
 
 **测试港股接口**：
 ```bash
-curl http://localhost:8010/api/hk-stock
+curl http://localhost:8002/api/stocks
 ```
 
 预期响应：
@@ -212,9 +203,6 @@ curl http://localhost:8010/api/hk-stock
 ```bash
 # 查看所有服务日志
 docker-compose -f docker/docker-compose.yml logs -f
-
-# 查看 Gateway 日志
-docker-compose -f docker/docker-compose.yml logs -f gateway
 
 # 查看 A股服务日志
 docker-compose -f docker/docker-compose.yml logs -f a_stock_service
@@ -244,7 +232,6 @@ bash scripts/stop.sh
 ==========================================
 
 停止所有服务...
-Stopping new-stock-gateway    ... done
 Stopping a-stock-service      ... done
 Stopping hk-stock-service     ... done
 ```
@@ -263,12 +250,11 @@ Error: bind: address already in use
 **解决方案**：
 ```bash
 # 检查端口占用
-lsof -i :8010
-netstat -ano | findstr :8010
+lsof -i :8001
+netstat -ano | findstr :8001
 
 # 或修改端口
-export GATEWAY_PORT=8001
-bash scripts/start.sh
+# 编辑 docker/.env 文件修改端口配置
 ```
 
 ### 问题 2：服务启动失败
